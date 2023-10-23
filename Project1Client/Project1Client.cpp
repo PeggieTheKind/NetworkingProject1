@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <iostream>
 #include <string>
-//#include <thread>
 #include "hBufferC.h" // Ensure this matches the server end
 
 struct PacketHeader
@@ -35,32 +34,6 @@ struct ChatMessage
 
 // First, make it work (messy), then organize
 #define DEFAULT_PORT "8412"
-
-//Functin to recv messages from server 
-//void ReceiveMessagesFromServer(SOCKET serverSocket)
-//{
-//    while (true)
-//    {
-//        char messageBuffer[512];
-//        int bytesRead = recv(serverSocket, messageBuffer, sizeof(messageBuffer), 0);
-//        if (bytesRead > 0)
-//        {
-//            messageBuffer[bytesRead] = '\0'; // Null-terminate the received data
-//            std::cout << messageBuffer << std::endl;
-//        }
-//        else if (bytesRead == 0)
-//        {
-//            // Server disconnected
-//            std::cout << "Server disconnected." << std::endl;
-//            break;
-//        }
-//        else
-//        {
-//            std::cerr << "recv failed with error " << WSAGetLastError() << std::endl;
-//            break;
-//        }
-//    }
-//}
 
 int main(int arg, char** argv)
 {
@@ -113,7 +86,7 @@ int main(int arg, char** argv)
     }
     printf("Connect to the server successfully!\n");
 
-    //temp
+   
     // Socket
     // https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-socket
     SOCKET listenSocket = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
@@ -164,10 +137,6 @@ int main(int arg, char** argv)
 
     std::cout << "Enter room wanted (or type 'exit' to quit): ";
     std::getline(std::cin, roomName);
-
-    // Create a thread to receive messages from the server
-    //std::thread receiveThread(ReceiveMessagesFromServer, serverSocket);
-
 
     while (true)
     {
@@ -234,101 +203,6 @@ int main(int arg, char** argv)
             break; // Exit the loop and close the program
         }
     }
-
-        
-        //else if (userInput == "list")
-        //{
-        //    // Request the list of chat rooms from the server
-        //    send(serverSocket, "list", 4, 0);
-
-        //    // Receive and print the list of chat rooms
-        //    char roomList[512];
-        //    int bytesRead = recv(serverSocket, roomList, sizeof(roomList), 0);
-        //    if (bytesRead > 0)
-        //    {
-        //        roomList[bytesRead] = '\0'; // Null-terminate the received data
-        //        std::cout << "Available chat rooms:\n" << roomList << std::endl;
-        //    }
-        //}
-        //else if (!currentChatRoom.empty())
-        //{
-        //    // Create a ChatMessage
-        //    ChatMessage message;
-        //   // message.message = "[" + username + "] " + userInput;
-        //    message.message = username + " " + currentChatRoom + " " + userInput;
-        //    message.messageLength = static_cast<uint32_t>(message.message.length());
-        //    message.header.messageType = 1; // Assuming 1 represents a regular chat message
-
-        //    // Calculate the packet size
-        //    message.header.packetSize =
-        //        message.message.length() +
-        //        sizeof(message.messageLength) +
-        //        sizeof(message.header.messageType) +
-        //        sizeof(message.header.packetSize);
-
-        //    // Write the message to the buffer
-        //    const int bufSize = 512;
-        //    Buffer buffer(bufSize);
-        //    buffer.WriteUInt32LE(message.header.packetSize);
-        //    buffer.WriteUInt32LE(message.header.messageType);
-        //    buffer.WriteUInt32LE(message.messageLength);
-        //    buffer.WriteString(message.message);
-
-        //    // Send the message to the server
-        //    int bytesToSend = message.header.packetSize;
-        //    int bytesSent = 0;
-        //    while (bytesSent < bytesToSend)
-        //    {
-        //        int sendResult = send(serverSocket, (const char*)(&buffer.m_BufferData[bytesSent]), bytesToSend - bytesSent, 0);
-        //        if (sendResult == SOCKET_ERROR)
-        //        {
-        //            std::cerr << "send failed with error " << WSAGetLastError() << std::endl;
-        //            closesocket(serverSocket);
-        //            freeaddrinfo(info);
-        //            WSACleanup();
-        //            return 1;
-        //        }
-        //        bytesSent += sendResult;
-        //    }
-        //}
-        //else
-        //{
-            // User wants to enter a chat room
-            /*std::string roomToEnter;
-            std::cout << "Enter the name of the chat room you want to join: ";
-            std::getline(std::cin, roomToEnter);*/
-
-            // Send a request to the server to join the specified chat room
-            //std::string joinRequest = "join " + roomToEnter;
-            //send(serverSocket, joinRequest.c_str(), joinRequest.size(), 0);
-
-            
-            
-            // Send the message to the server
-            /*int bytesToSend = message.header.packetSize;
-            int bytesSent = 0;
-            while (bytesSent < bytesToSend)
-            {
-                int sendResult = send(serverSocket, (const char*)(&buffer.m_BufferData[bytesSent]), bytesToSend - bytesSent, 0);
-                if (sendResult == SOCKET_ERROR)
-                {
-                    std::cerr << "send failed with error " << WSAGetLastError() << std::endl;
-                    closesocket(serverSocket);
-                    freeaddrinfo(info);
-                    WSACleanup();
-                    return 1;
-                }
-                bytesSent += sendResult;
-            }*/
-
-            // Set the current chat room
-            //currentChatRoom = roomToEnter;
-            //std::cout << "Joined chat room: " << currentChatRoom << std::endl;
- //       }
-  //  }
-
-    // Wait for the receive thread to finish (when the server disconnects)
-    //receiveThread.join();
 
     // Close
     freeaddrinfo(info);
