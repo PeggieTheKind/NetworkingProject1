@@ -1,25 +1,31 @@
-#pragma once
+//Server Side Code: 
+//Created by Alex V and Ryan M 
+//For: Lukas Gustafson : INFO 6016
+//
+//Goals:
+// Creating a Server for a Server:Client pair
 
+#pragma once
 // WinSock2 Windows Sockets
 #define WIN32_LEAN_AND_MEAN
+#define  _CRT_SECURE_NO_WARNINGS
 
 #include <Windows.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include <vector>
 #include <string>
 #include "hBufferS.h"
+#include <map>//for Room list
+#include <iostream>
 
-// Need to link Ws2_32.lib
-#pragma comment(lib, "Ws2_32.lib")
 
-// First, make it work (messy), then organize
+#pragma comment(lib, "Ws2_32.lib")// Need to link Ws2_32.lib
+#define DEFAULT_PORT "8412"// First, make it work (messy), then organize
 
-#define DEFAULT_PORT "8412"
-
+//struct lib
 struct PacketHeader
 {
 	uint32_t packetSize;
@@ -33,16 +39,26 @@ struct ChatMessage
 	std::string message;
 };
 
+//List of clients
 std::vector<SOCKET> gClientList;
 
+//room list
+//std::map<std::string, SOCKET> gRoomZero;
+//std::map<std::string, SOCKET> gRoomOne;
+//std::map<std::string, SOCKET> gRoomTwo;
+//std::map<std::string, SOCKET> gRoomThree;
+//std::map<std::string, SOCKET>::iterator roomIt;
+
+
+//main stage
 int main(int arg, char** argv)
 {
 	// Initialize WinSock
 	WSADATA wsaData;
 	int result;
 
-	// Set version 2.2 with MAKEWORD(2,2)
-	// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsastartup
+
+	// Set version 2.2 with MAKEWORD(2,2) https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-wsastartup
 	result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result != 0) {
 		printf("WSAStartup failed with error %d\n", result);
@@ -50,6 +66,18 @@ int main(int arg, char** argv)
 	}
 	printf("WSAStartup successfully!\n");
 
+	////room vector populate
+	//gRoomList[0] = "Default";
+	//gRoomList[1] = "Finance";
+	//gRoomList[2] = "Marketing";
+	//gRoomList[3] = "Customer Service";
+
+	////room it 
+	//std::map<int, std::string>::iterator listIt = gRoomList.begin();
+
+	//printRoomList(listIt);
+
+	//addressing setup
 	struct addrinfo* info = nullptr;
 	struct addrinfo hints;
 	ZeroMemory(&hints, sizeof(hints));	// ensure we don't have garbage data 
@@ -102,12 +130,10 @@ int main(int arg, char** argv)
 	}
 	printf("listen successful\n");
 
-
+	//vector of current connections
 	std::vector<SOCKET> activeConnections;
-
 	FD_SET activeSockets;				// List of all of the clients ready to read.
 	FD_SET socketsReadyForReading;		// List of all of the connections
-
 	FD_ZERO(&activeSockets);			// Initialize the sets
 	FD_ZERO(&socketsReadyForReading);
 
@@ -116,6 +142,7 @@ int main(int arg, char** argv)
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 
+	//selecting loop
 	while (true)
 	{
 		// Reset the socketsReadyForReading
@@ -171,34 +198,199 @@ int main(int arg, char** argv)
 					freeaddrinfo(info);
 					WSACleanup();
 					break;
+					
 				}
-
-				printf("Received %d bytes from the client!\n", result);
+				if (result != 0)
+					printf("Received %d bytes from the client!\n", result);
+				//else
+					//printf("Client #%s disconnected\n", activeConnections[i]);
 
 				// We must receive 4 bytes before we know how long the packet actually is
 				// We must receive the entire packet before we can handle the message.
 				// Our protocol says we have a HEADER[pktsize, messagetype];
 				uint32_t packetSize = buffer.ReadUInt32LE();
 				uint32_t messageType = buffer.ReadUInt32LE();
-
+				
 				if (buffer.m_BufferData.size() >= packetSize)
 				{
-					// We can finally handle our message
+					
 				}
 
+				//default path 
+				uint32_t messageLength = buffer.ReadUInt32LE();
+				std::string msg = buffer.ReadString(messageLength);
+
+				// We can finally handle our message
+				//find params 
+				const char* temp = msg.c_str();
+				int counterSetter = 0;
+				std::string userName = "";
+				std::string roomPlan = "";
+				std::string overallMsg = "";
+
+				char* p = strtok((char*)temp, " ");
+				while (p != NULL) 
+				{
+					if (counterSetter == 0)
+						userName = p;
+
+					if (counterSetter == 1)
+						roomPlan = p;
+
+					if (counterSetter > 1)
+					{
+						if(counterSetter == 2)
+							overallMsg += p;
+						else
+							overallMsg += ' ' + p;
+					}
+
+					counterSetter++;
+					std::cout << p << std::endl;
+					p = strtok(NULL, " ");
+				}
+
+				for (int i = 0; i < activeConnections.size(); i++)
+				{
+					SOCKET socket = activeConnections[i];
+
+					//pack it up
+					// We know this is a ChatMessage
+					//uint32_t messageLength = buffer.ReadUInt32LE();
+					//std::string msg = buffer.ReadString(messageLength);
+
+					//send too all in room
+					ChatMessage message;
+					//message.message = overallMsg;
+					message.message = "helloworld from server";
+					message.messageLength = message.message.length();
+					message.header.messageType = 1;// Can use an enum to determine this
+					message.header.packetSize =
+						message.message.length()				// 5 'hello' has 5 bytes in it
+						+ sizeof(message.messageLength)			// 4, uint32_t is 4 bytes
+						+ sizeof(message.header.messageType)	// 4, uint32_t is 4 bytes
+						+ sizeof(message.header.packetSize);	// 4, uint32_t is 4 bytes
+
+					//protocol
+					buffer.WriteUInt32LE(message.header.packetSize);	// LPMF
+					buffer.WriteUInt32LE(message.header.messageType);	// 1
+					buffer.WriteUInt32LE(message.messageLength);		// 5
+					buffer.WriteString(message.message);				// Big edian Message should be the biggest value ASSCII
+
+					//overallMsg
+					result = send(socket, (char*)(&buffer.m_BufferData[0]), 512, 0);
+							if (result == SOCKET_ERROR) {
+								printf("send failed with error %d\n", WSAGetLastError());
+								closesocket(listenSocket);
+								freeaddrinfo(info);
+								WSACleanup();
+								break;
+								}
+
+				}
+
+				//we all of our placement items
+				//list all in Room x print msg from user
+
+				//// Must use .c_str() if printing from a std::string, to return as a 'const char*'
+				//printf("PacketSize:%d\nMessageType:%d\nMessageLength:%d\nMessage:%s\n",
+				//	packetSize, messageType, messageLength, msg.c_str());
+
+				
+
+
+				//leaves group
 				if (messageType == 1)
 				{
-					// We know this is a ChatMessage
-					uint32_t messageLength = buffer.ReadUInt32LE();
-					std::string msg = buffer.ReadString(messageLength);
+					
 
-					// Must use .c_str() if printing from a std::string, to return as a 'const char*'
-					printf("PacketSize:%d\nMessageType:%d\nMessageLength:%d\nMessage:%s\n",
-						packetSize, messageType, messageLength, msg.c_str());
 				}
+				if (messageType == 2)
+				{
+					//int roomNumber = 0;
+					//
+					////add too room list if doesnt already
+					////roomIt = find(gRoomOne.begin(), gRoomOne.end(), "user");
 
-				//// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
-				//result = send(socket, buffer, 512, 0);
+					////if (roomIt != gRoomOne.end())
+					////{
+					////	//found
+					////	gRoomOne["user"] = socket;
+					////	continue;//breaks loop
+					////}
+					////else
+					////{
+					////	//not found, add
+					////	gRoomOne["X"] = socket;
+					////}
+
+					//// We know this is a ChatMessage
+					//uint32_t messageLength = buffer.ReadUInt32LE();
+					//std::string msg = buffer.ReadString(messageLength);
+
+					////send too all in room
+					//ChatMessage message;
+					//message.message = msg;
+					//message.messageLength = message.message.length();
+					//message.header.messageType = 1;// Can use an enum to determine this
+					//message.header.packetSize =
+					//	message.message.length()				// 5 'hello' has 5 bytes in it
+					//	+ sizeof(message.messageLength)			// 4, uint32_t is 4 bytes
+					//	+ sizeof(message.header.messageType)	// 4, uint32_t is 4 bytes
+					//	+ sizeof(message.header.packetSize);	// 4, uint32_t is 4 bytes
+
+					////protocol
+					//buffer.WriteUInt32LE(message.header.packetSize);	// LPMF
+					//buffer.WriteUInt32LE(message.header.messageType);	// 1
+					//buffer.WriteUInt32LE(message.messageLength);		// 5
+					//buffer.WriteString(message.message);				// Big edian Message should be the biggest value ASSCII
+
+					//for (int r = 0; r < gRoomOne.size(); r++) //sends to each member of room
+					//{
+
+					//	
+					//	//if(type == roomOne)
+					//	if (true)
+					//	{
+					//		////// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
+					//		result = send(socket, (char*)(&buffer.m_BufferData[0]), 512, 0);
+					//		if (result == SOCKET_ERROR) {
+					//			printf("send failed with error %d\n", WSAGetLastError());
+					//			closesocket(listenSocket);
+					//			freeaddrinfo(info);
+					//			WSACleanup();
+					//			break;
+					//		}
+					//		else
+					//		{
+					//			//everything else
+					//		}
+					//	}
+					//}
+
+					
+				}
+				
+				//Can get user input for message
+				//ChatMessage message;
+				//message.message = "hello from server";
+				//message.messageLength = message.message.length();
+				//message.header.messageType = 1;// Can use an enum to determine this
+				//message.header.packetSize =
+				//	message.message.length()				// 5 'hello' has 5 bytes in it
+				//	+ sizeof(message.messageLength)			// 4, uint32_t is 4 bytes
+				//	+ sizeof(message.header.messageType)	// 4, uint32_t is 4 bytes
+				//	+ sizeof(message.header.packetSize);	// 4, uint32_t is 4 bytes
+
+				//////length prefix message framing, writes the size of message before the message
+				////// Write our packet to the buffer
+				//buffer.WriteUInt32LE(message.header.packetSize);	// LPMF
+				//buffer.WriteUInt32LE(message.header.messageType);	// 1
+				//buffer.WriteUInt32LE(message.messageLength);		// 5
+				//buffer.WriteString(message.message);				// Big edian Message should be the biggest value ASSCII
+
+				//////// https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-send
+				//result = send(socket, (char*)(&buffer.m_BufferData[0]), 512, 0);
 				//if (result == SOCKET_ERROR) {
 				//	printf("send failed with error %d\n", WSAGetLastError());
 				//	closesocket(listenSocket);
